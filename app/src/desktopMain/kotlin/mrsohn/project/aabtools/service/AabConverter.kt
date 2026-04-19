@@ -29,6 +29,10 @@ class AabConverter {
     private val _status = MutableStateFlow<ConversionStatus>(ConversionStatus.Idle)
     val status: StateFlow<ConversionStatus> = _status
 
+    fun resetStatus() {
+        _status.value = ConversionStatus.Idle
+    }
+
     suspend fun convert(
         aabFile: File,
         outputDir: File,
@@ -56,22 +60,28 @@ class AabConverter {
                 .setOverwriteOutput(true)
                 .setApkBuildMode(BuildApksCommand.ApkBuildMode.UNIVERSAL)
 
-            if (keystoreFile != null && keystorePassword != null && keyAlias != null && keyPassword != null) {
-                val ksPassword = Password.createFromStringValue(keystorePassword)
-                val kPassword = Password.createFromStringValue(keyPassword)
+            if (keystoreFile != null && keyAlias != null) {
+                val normalizedKeystorePassword = keystorePassword?.takeIf { it.isNotBlank() }?.let {
+                    Password.createFromStringValue("pass:$it")
+                }
+                val normalizedKeyPassword = keyPassword?.takeIf { it.isNotBlank() }?.let {
+                    Password.createFromStringValue("pass:$it")
+                }
 
-                val signerConfig = SignerConfig.extractFromKeystore(
-                    keystoreFile.toPath(),
-                    keyAlias,
-                    Optional.of(ksPassword),
-                    Optional.of(kPassword)
-                )
-                
-                val signingConfig = SigningConfiguration.builder()
-                    .setSignerConfig(signerConfig)
-                    .build()
+                if (normalizedKeystorePassword != null && normalizedKeyPassword != null) {
+                    val signerConfig = SignerConfig.extractFromKeystore(
+                        keystoreFile.toPath(),
+                        keyAlias,
+                        Optional.of(normalizedKeystorePassword),
+                        Optional.of(normalizedKeyPassword)
+                    )
 
-                commandBuilder.setSigningConfiguration(signingConfig)
+                    val signingConfig = SigningConfiguration.builder()
+                        .setSignerConfig(signerConfig)
+                        .build()
+
+                    commandBuilder.setSigningConfiguration(signingConfig)
+                }
             }
 
             commandBuilder.build().execute()
@@ -96,8 +106,10 @@ class AabConverter {
     private fun resolveAapt2Path(): Path? {
         val sdkRoot = listOf(
             System.getenv("ANDROID_SDK_ROOT"),
-            System.getenv("ANDROID_HOME")
-        ).firstOrNull { !it.isNullOrBlank() } ?: return null
+            System.getenv("ANDROID_HOME"),
+            File(System.getProperty("user.home"), "Library/Android/sdk").absolutePath,
+            File(System.getProperty("user.home"), "AppData/Local/Android/Sdk").absolutePath
+        ).firstOrNull { it != null && File(it).exists() } ?: return null
 
         val buildToolsDir = File(sdkRoot, "build-tools")
         if (!buildToolsDir.exists() || !buildToolsDir.isDirectory) return null

@@ -22,16 +22,17 @@ kotlin {
                 implementation(compose.components.uiToolingPreview)
                 implementation(compose.materialIconsExtended)
                 implementation(libs.bundletool)
+                implementation(libs.moshi.kotlin)
+                implementation(libs.moshi.kotlin.codegen)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.swing)
             }
         }
-        val desktopTest by getting {
-            dependencies {
-                implementation(compose.desktop.currentOs)
-            }
-        }
     }
+}
+
+dependencies {
+    add("kspDesktop", libs.moshi.kotlin.codegen)
 }
 
 compose.desktop {

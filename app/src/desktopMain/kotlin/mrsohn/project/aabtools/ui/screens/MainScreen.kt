@@ -1,7 +1,15 @@
 package mrsohn.project.aabtools.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,108 +21,186 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Numbers
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.Straighten
-import androidx.compose.material.icons.rounded.Upload
+import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import mrsohn.project.aabtools.service.ConversionStatus
 import mrsohn.project.aabtools.viewmodel.ConversionViewModel
 import java.awt.FileDialog
 import java.awt.Frame
+import java.awt.datatransfer.DataFlavor
+import java.awt.dnd.DropTargetDragEvent
+import java.awt.dnd.DropTargetDropEvent
+import java.awt.dnd.DnDConstants
 import java.io.File
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MainScreen(viewModel: ConversionViewModel) {
     val status by viewModel.status.collectAsState()
-    val scrollState = rememberScrollState()
+    var isAabDragActive by remember { mutableStateOf(false) }
+
+    val dndTarget = remember {
+        object : DragAndDropTarget {
+            override fun onEntered(event: DragAndDropEvent) {
+                isAabDragActive = true
+            }
+
+            override fun onExited(event: DragAndDropEvent) {
+                isAabDragActive = false
+            }
+
+            override fun onDrop(event: DragAndDropEvent): Boolean {
+
+                isAabDragActive = false
+                val files = extractFilesFromEvent(event)
+                val aabFile = files.firstOrNull { it.isFile && it.extension.lowercase() == "aab" }
+
+                return if (aabFile != null) {
+                    viewModel.updateAabPath(aabFile.absolutePath)
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .dragAndDropTarget(
+                shouldStartDragAndDrop = { true },
+                target = dndTarget
+            )
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF2D1B4D), Color(0xFF121212))
+                    colors = listOf(Color(0xFF1A1225), Color(0xFF0F0F0F))
                 )
             )
-            .padding(24.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 40.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Text(
-                text = "AABTools",
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-                fontSize = 40.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Your AAB to APK Converter",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "AABTools",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    text = "Fast & Simple AAB to APK Converter",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.5f)
+                )
+            }
 
-            // Main Content Area
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight()
-                    .padding(bottom = 24.dp),
-                shape = RoundedCornerShape(24.dp),
+                    .weight(1f, fill = false),
+                shape = RoundedCornerShape(28.dp),
+                border = BorderStroke(1.dp, if (isAabDragActive) Color(0xFFD0BCFF) else Color.White.copy(alpha = 0.05f)),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF1E1E1E).copy(alpha = 0.8f)
+                    containerColor = if (isAabDragActive) Color(0xFF2D243F) else Color(0xFF1C1C1E).copy(alpha = 0.6f)
                 )
             ) {
-                Column(
+                Box(
                     modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    contentAlignment = Alignment.Center
                 ) {
                     if (viewModel.aabPath.isEmpty()) {
-                        SelectionView(viewModel)
+                        SelectionView(viewModel, isAabDragActive)
                     } else {
                         FileInfoView(viewModel)
                     }
                 }
             }
 
-            // Status View
-            AnimatedVisibility(visible = status !is ConversionStatus.Idle) {
+            if (viewModel.aabPath.isNotEmpty() && status is ConversionStatus.Idle) {
+                Button(
+                    onClick = { viewModel.convert() },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD0BCFF),
+                        contentColor = Color(0xFF381E72)
+                    )
+                ) {
+                    Icon(Icons.Rounded.Straighten, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Convert to APK", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Overlay status with a more compact design
+        AnimatedVisibility(
+            visible = status !is ConversionStatus.Idle,
+            enter = fadeIn() + scaleIn(initialScale = 0.9f),
+            exit = fadeOut() + scaleOut(targetScale = 0.9f),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable(enabled = false) {},
+                contentAlignment = Alignment.Center
+            ) {
                 StatusOverlay(status, viewModel)
             }
         }
@@ -122,126 +208,256 @@ fun MainScreen(viewModel: ConversionViewModel) {
 }
 
 @Composable
-fun SelectionView(viewModel: ConversionViewModel) {
-    Button(
-        onClick = {
-            val file = pickFile("Select AAB File", listOf("aab"))
-            if (file != null) {
-                viewModel.updateAabPath(file.absolutePath)
-            }
-        },
+fun SelectionView(viewModel: ConversionViewModel, isAabDragActive: Boolean) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
+            .height(260.dp)
+            .clickable {
+                val file = pickFile("Select AAB File", listOf("aab"))
+                if (file != null) viewModel.updateAabPath(file.absolutePath)
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Rounded.FolderOpen,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Select AAB File", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Text("or drag and drop file here", color = Color.White.copy(alpha = 0.6f))
-        }
+        Icon(
+            Icons.Rounded.FolderOpen,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = if (isAabDragActive) Color(0xFFD0BCFF) else Color.White.copy(alpha = 0.3f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "Select or Drag AAB File",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        Text(
+            "BundleTool will generate a universal APK",
+            color = Color.White.copy(alpha = 0.4f),
+            fontSize = 14.sp
+        )
     }
 }
 
 @Composable
 fun FileInfoView(viewModel: ConversionViewModel) {
-    val aabFile = File(viewModel.aabPath)
     val metadata = viewModel.metadata
-    
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val file = File(viewModel.aabPath)
+    val fileSize = if (file.exists()) formatFileSize(file.length()) else "Unknown size"
+
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Description, contentDescription = null, tint = Color(0xFFD0BCFF))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(aabFile.name, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 20.sp)
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                InfoRow(Icons.Rounded.Straighten, "Size", "${"%.1f".format(aabFile.length() / 1024.0 / 1024.0)} MB")
-                InfoRow(Icons.Rounded.Numbers, "Version Code", metadata?.versionCode?.toString() ?: "Loading...")
-                InfoRow(Icons.Rounded.Info, "Package", metadata?.packageName ?: "Loading...")
+                Text("Selected AAB", style = MaterialTheme.typography.labelMedium, color = Color(0xFFD0BCFF))
+                Text(
+                    file.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(fileSize, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
             }
-            
-            Column(modifier = Modifier.weight(1f)) {
-                OutlinedCard(
-                    onClick = {
-                        val dir = pickDirectory("Select Output Directory")
-                        if (dir != null) {
-                            viewModel.outputDirPath = dir.absolutePath
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent, contentColor = Color.White)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Output Folder", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
-                        }
-                        Text(
-                            text = if (viewModel.outputDirPath.isEmpty()) "Default (Same as AAB)" else viewModel.outputDirPath,
-                            fontSize = 14.sp,
-                            maxLines = 2,
-                            color = Color.White
-                        )
-                    }
-                }
+            IconButton(
+                onClick = { viewModel.reset() },
+                colors = IconButtonDefaults.iconButtonColors(containerColor = Color.White.copy(alpha = 0.05f))
+            ) {
+                Icon(Icons.Rounded.Close, null, tint = Color.White)
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Button(
-                onClick = { viewModel.convert() },
-                modifier = Modifier.weight(1f).height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE))
-            ) {
-                Icon(Icons.Rounded.Upload, contentDescription = null)
+        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+
+        if (metadata != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                InfoItem(Icons.Rounded.Android, "Package", metadata.packageName, Modifier.weight(1.5f))
+                InfoItem(Icons.Rounded.Numbers, "Version", "${metadata.versionName} (${metadata.versionCode})", Modifier.weight(1f))
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color(0xFFD0BCFF))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Convert to APK", fontWeight = FontWeight.Bold)
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            IconButton(
-                onClick = { /* More options: Sign, etc. */ },
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(Color(0xFF6200EE), RoundedCornerShape(16.dp))
-            ) {
-                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color.White)
+                Text("Fetching metadata...", color = Color.White.copy(alpha = 0.4f), fontSize = 13.sp)
             }
         }
-        
-        TextButton(
-            onClick = { viewModel.updateAabPath("") },
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp)
-        ) {
-            Text("Clear Selection", color = Color.White.copy(alpha = 0.6f))
-        }
+
+        SigningOptionsCard(viewModel)
     }
 }
 
 @Composable
-fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
-    Row(modifier = Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(label, fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
-            Text(value, fontSize = 16.sp, color = Color.White)
+fun InfoItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+            Icon(icon, null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.3f))
+        }
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SigningOptionsCard(viewModel: ConversionViewModel) {
+    var expanded by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var newProfileName by remember { mutableStateOf("") }
+
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = Color.White.copy(alpha = 0.02f)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.VpnKey, null, tint = Color(0xFFD0BCFF), modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Custom Signing", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = Color.White)
+                }
+                Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, null, tint = Color.White.copy(alpha = 0.4f))
+            }
+
+            if (expanded) {
+                if (viewModel.savedProfiles.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Saved Profiles", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.4f))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        viewModel.savedProfiles.forEach { profile ->
+                            Surface(
+                                onClick = { viewModel.applyProfile(profile) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color.White.copy(alpha = 0.05f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(profile.name, fontSize = 11.sp, color = Color.White)
+                                    IconButton(
+                                        onClick = { viewModel.deleteProfile(profile) },
+                                        modifier = Modifier.size(16.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.Close, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(10.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = viewModel.keystorePath,
+                    onValueChange = { viewModel.keystorePath = it },
+                    label = { Text("Keystore Path", fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            val file = pickFile("Select Keystore", listOf("jks", "keystore"))
+                            if (file != null) viewModel.keystorePath = file.absolutePath
+                        }) { Icon(Icons.Rounded.Folder, null, modifier = Modifier.size(20.dp)) }
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = viewModel.keystorePassword,
+                    onValueChange = { viewModel.keystorePassword = it },
+                    label = { Text("Keystore Password", fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+//                    visualTransformation = PasswordVisualTransformation()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = viewModel.keyAlias,
+                        onValueChange = { viewModel.keyAlias = it },
+                        label = { Text("Key Alias", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = viewModel.keyPassword,
+                        onValueChange = { viewModel.keyPassword = it },
+                        label = { Text("Key Password", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f),
+//                        visualTransformation = PasswordVisualTransformation()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { showSaveDialog = true },
+                    modifier = Modifier.fillMaxWidth().height(40.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.05f)),
+                    enabled = viewModel.keystorePath.isNotEmpty() && viewModel.keystorePassword.isNotEmpty()
+                ) {
+                    Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(16.dp), tint = Color(0xFFD0BCFF))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Save as Profile", fontSize = 12.sp, color = Color.White)
+                }
+            }
+        }
+    }
+
+    if (showSaveDialog) {
+        androidx.compose.ui.window.DialogWindow(
+            onCloseRequest = { showSaveDialog = false },
+            title = "Save Keystore Profile",
+            state = androidx.compose.ui.window.rememberDialogState(width = 400.dp, height = 300.dp)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color(0xFF1C1C1E)
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Text("Profile Name", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = newProfileName,
+                        onValueChange = { newProfileName = it },
+                        placeholder = { Text("e.g. My App Key", color = Color.White.copy(alpha = 0.3f)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showSaveDialog = false }) {
+                            Text("Cancel", color = Color.White.copy(alpha = 0.5f))
+                        }
+                        Button(
+                            onClick = {
+                                if (newProfileName.isNotEmpty()) {
+                                    viewModel.saveCurrentAsProfile(newProfileName)
+                                    showSaveDialog = false
+                                    newProfileName = ""
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF))
+                        ) {
+                            Text("Save", color = Color(0xFF381E72))
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -249,42 +465,60 @@ fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String
 @Composable
 fun StatusOverlay(status: ConversionStatus, viewModel: ConversionViewModel) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF252525))
+        modifier = Modifier.fillMaxWidth(0.85f).wrapContentHeight(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF242426)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (status) {
                 is ConversionStatus.Processing -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(80.dp),
-                        color = Color(0xFFD0BCFF),
-                        strokeWidth = 8.dp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(status.message, color = Color.White)
+                    CircularProgressIndicator(modifier = Modifier.size(48.dp), color = Color(0xFFD0BCFF))
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(status.message, color = Color.White, textAlign = TextAlign.Center)
                 }
                 is ConversionStatus.Success -> {
-                    Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = Color(0xFF81C784), modifier = Modifier.size(64.dp))
-                    Text("Conversion Successful!", color = Color(0xFF81C784), fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                    Text(File(status.apkPath).name, color = Color.White.copy(alpha = 0.7f))
+                    Icon(Icons.Rounded.CheckCircle, null, tint = Color(0xFFB4FF9F), modifier = Modifier.size(64.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { openFolder(File(status.apkPath).parentFile) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF), contentColor = Color.Black)
+                    Text("Conversion Success!", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                    val apkFile = File(status.apkPath)
+                val apkSize = formatFileSize(apkFile.length())
+                Text("${apkFile.name} ($apkSize)", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    DeviceSelectionCard(viewModel, status.apkPath)
+
+                    Spacer(modifier = Modifier.height(32.dp))
+                    TextButton(
+                        onClick = { viewModel.reset() },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFD0BCFF))
                     ) {
-                        Icon(Icons.Rounded.Folder, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Open APK Folder")
+                        Icon(Icons.Rounded.Refresh, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Start New Conversion")
                     }
                 }
                 is ConversionStatus.Error -> {
-                    Icon(Icons.Rounded.Error, contentDescription = null, tint = Color(0xFFE57373), modifier = Modifier.size(64.dp))
-                    Text("Error", color = Color(0xFFE57373), fontWeight = FontWeight.Bold)
-                    Text(status.message, color = Color.White, modifier = Modifier.padding(top = 8.dp))
+                    Icon(Icons.Rounded.Error, null, tint = Color(0xFFFFB4B4), modifier = Modifier.size(64.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Conversion Failed", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(status.message, color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Button(
+                        onClick = { viewModel.reset() },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f))
+                    ) {
+                        Text("Try Again")
+                    }
                 }
                 else -> {}
             }
@@ -292,31 +526,105 @@ fun StatusOverlay(status: ConversionStatus, viewModel: ConversionViewModel) {
     }
 }
 
-fun pickFile(title: String, extensions: List<String>): File? {
-    val dialog = FileDialog(Frame(), title, FileDialog.LOAD)
-    dialog.isVisible = true
-    return if (dialog.file != null) File(dialog.directory, dialog.file) else null
-}
+@Composable
+fun DeviceSelectionCard(viewModel: ConversionViewModel, apkPath: String) {
+    val devices = viewModel.connectedDevices
+    val installationStatus = viewModel.installationStatus
 
-fun pickDirectory(title: String): File? {
-    System.setProperty("apple.awt.fileDialogForDirectories", "true")
-    val dialog = FileDialog(Frame(), title, FileDialog.LOAD)
-    dialog.isVisible = true
-    System.setProperty("apple.awt.fileDialogForDirectories", "false")
-    return if (dialog.file != null) File(dialog.directory, dialog.file) else null
-}
-
-fun openFolder(folder: File) {
-    try {
-        java.awt.Desktop.getDesktop().open(folder)
-    } catch (e: Exception) {
-        e.printStackTrace()
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Install to Device", style = MaterialTheme.typography.titleSmall, color = Color.White)
+            IconButton(onClick = { viewModel.refreshDevices() }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Rounded.Refresh, null, tint = Color(0xFFD0BCFF), modifier = Modifier.size(16.dp))
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        if (devices.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(80.dp).background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No devices connected", color = Color.White.copy(alpha = 0.3f), fontSize = 13.sp)
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                devices.forEach { device ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+                    ) {
+                        ListItem(
+                            headlineContent = { Text(device.model, color = Color.White, fontSize = 14.sp) },
+                            supportingContent = { Text(device.serial, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) },
+                            leadingContent = { Icon(Icons.Rounded.Smartphone, null, tint = Color.White.copy(alpha = 0.5f)) },
+                            trailingContent = {
+                                TextButton(onClick = { viewModel.installToDevice(device, apkPath) }) {
+                                    Text("Install", color = Color(0xFFD0BCFF))
+                                }
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+                    }
+                }
+            }
+        }
+        
+        installationStatus?.let {
+            Spacer(modifier = Modifier.height(16.dp))
+            Surface(
+                color = Color(0xFFD0BCFF).copy(alpha = 0.1f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(it, color = Color(0xFFD0BCFF), modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), fontSize = 12.sp)
+            }
+        }
     }
 }
 
+fun pickFile(title: String, allowedExtensions: List<String>): File? {
+    val frame = Frame()
+    val dialog = FileDialog(frame, title, FileDialog.LOAD)
+    dialog.setFilenameFilter { _, name -> allowedExtensions.any { name.lowercase().endsWith(it) } }
+    dialog.isVisible = true
+    val file = dialog.file
+    val dir = dialog.directory
+    dialog.dispose()
+    frame.dispose()
+    return if (file != null && dir != null) File(dir, file) else null
+}
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewMainScreen() {
-    MainScreen(ConversionViewModel())
+@OptIn(ExperimentalComposeUiApi::class)
+private fun extractFilesFromEvent(event: DragAndDropEvent): List<File> {
+    return when (val nativeEvent = event.nativeEvent) {
+        is DropTargetDragEvent -> getDroppedFiles(nativeEvent.transferable)
+        is DropTargetDropEvent -> {
+            nativeEvent.acceptDrop(DnDConstants.ACTION_COPY)
+            val files = getDroppedFiles(nativeEvent.transferable)
+            nativeEvent.dropComplete(files.isNotEmpty())
+            files
+        }
+        else -> emptyList()
+    }
+}
+
+private fun getDroppedFiles(transferable: java.awt.datatransfer.Transferable): List<File> {
+    return try {
+        if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+            @Suppress("UNCHECKED_CAST")
+            transferable.getTransferData(DataFlavor.javaFileListFlavor) as List<File>
+        } else emptyList()
+    } catch (_: Exception) { emptyList() }
+}
+
+private fun formatFileSize(bytes: Long): String {
+    val kb = bytes / 1024.0
+    val mb = kb / 1024.0
+    return if (mb >= 1.0) "%.2f MB".format(mb) else "%.2f KB".format(kb)
 }
