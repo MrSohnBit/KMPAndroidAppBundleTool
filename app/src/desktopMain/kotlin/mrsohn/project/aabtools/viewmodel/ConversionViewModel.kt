@@ -1,6 +1,8 @@
 package mrsohn.project.aabtools.viewmodel
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
@@ -8,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import mrsohn.project.aabtools.service.*
+import java.awt.Desktop
 import java.io.File
 
 class ConversionViewModel(
@@ -56,7 +59,6 @@ class ConversionViewModel(
         keystorePassword = profile.password
         keyAlias = profile.alias
         keyPassword = profile.keyPassword
-        // saveRecentConfig() is called within the setters
     }
 
     fun saveCurrentAsProfile(name: String) {
@@ -135,6 +137,8 @@ class ConversionViewModel(
 
     var connectedDevices by mutableStateOf<List<AdbDevice>>(emptyList())
         private set
+
+    val selectedDeviceSerials = mutableStateMapOf<String, Boolean>()
     
     var installationStatus by mutableStateOf<String?>(null)
         private set
@@ -163,23 +167,89 @@ class ConversionViewModel(
                 keyAlias = keyAlias.takeIf { it.isNotEmpty() },
                 keyPassword = keyPassword.takeIf { it.isNotEmpty() }
             )
+            if (converter.status.value is ConversionStatus.Success) {
+                refreshDevices()
+            }
         }
     }
 
     fun refreshDevices() {
         viewModelScope.launch {
             connectedDevices = adbService.getConnectedDevices()
+            // Cleanup selected devices that are no longer connected
+            val currentSerials = connectedDevices.map { it.serial }.toSet()
+            val toRemove = selectedDeviceSerials.keys.filter { it !in currentSerials }
+            toRemove.forEach { selectedDeviceSerials.remove(it) }
         }
     }
 
-    fun installToDevice(device: AdbDevice, apkPath: String) {
-        installationStatus = "Installing to ${device.serial}..."
+    fun toggleDeviceSelection(serial: String) {
+        val current = selectedDeviceSerials[serial] ?: false
+        selectedDeviceSerials[serial] = !current
+    }
+
+    fun installToSelectedDevices(apkPath: String) {
+        val targets = connectedDevices.filter { selectedDeviceSerials[it.serial] == true }
+        if (targets.isEmpty()) {
+            installationStatus = "Select at least one device"
+            return
+        }
+
         viewModelScope.launch {
-            val result = adbService.installApk(device.serial, apkPath)
-            installationStatus = result.fold(
-                onSuccess = { "Install Success!" },
-                onFailure = { "Install Error: ${it.message}" }
-            )
+            installationStatus = "Refreshing devices and starting installation..."
+            // Double check connectivity before installing
+            val freshDevices = adbService.getConnectedDevices()
+            val freshSerials = freshDevices.map { it.serial }.toSet()
+            
+            val validTargets = targets.filter { it.serial in freshSerials }
+            
+            if (validTargets.isEmpty()) {
+                installationStatus = "No selected devices are currently connected."
+                connectedDevices = freshDevices
+                return@launch
+            }
+
+            validTargets.forEach { device ->
+                installationStatus = "Installing to ${device.serial}..."
+                val result = adbService.installApk(device.serial, apkPath)
+                installationStatus = result.fold(
+                    onSuccess = { "Install Success for ${device.model}!" },
+                    onFailure = { "Install Error for ${device.model}: ${it.message}" }
+                )
+            }
+        }
+    }
+
+    fun selectAllDevices() {
+        connectedDevices.forEach { selectedDeviceSerials[it.serial] = true }
+    }
+
+    fun deselectAllDevices() {
+        selectedDeviceSerials.clear()
+    }
+
+    fun openFolder(path: String) {
+        try {
+            val file = File(path)
+            if (!file.exists()) return
+
+            val os = System.getProperty("os.name").lowercase()
+            when {
+                os.contains("win") -> {
+                    Runtime.getRuntime().exec("explorer.exe /select,\"${file.absolutePath}\"")
+                }
+                os.contains("mac") -> {
+                    Runtime.getRuntime().exec(arrayOf("open", "-R", file.absolutePath))
+                }
+                else -> {
+                    val parent = file.parentFile
+                    if (parent != null && parent.exists()) {
+                        Desktop.getDesktop().open(parent)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -187,6 +257,7 @@ class ConversionViewModel(
         aabPath = ""
         metadata = null
         installationStatus = null
+        selectedDeviceSerials.clear()
         converter.resetStatus()
     }
 }
