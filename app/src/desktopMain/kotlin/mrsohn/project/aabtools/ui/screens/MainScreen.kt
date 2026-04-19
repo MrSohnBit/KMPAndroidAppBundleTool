@@ -151,16 +151,16 @@ fun MainScreen(viewModel: ConversionViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
                 border = BorderStroke(
-                    1.dp, 
+                    1.dp,
                     when (dragStatus) {
-                        DragStatus.Valid -> Color.Transparent
+                        DragStatus.Valid -> Color(0xFFD0BCFF)
                         DragStatus.Invalid -> Color(0xFFFFB4B4)
                         DragStatus.None -> Color.White.copy(alpha = 0.05f)
                     }
                 ),
                 colors = CardDefaults.cardColors(
                     containerColor = when (dragStatus) {
-                        DragStatus.Valid -> Color.Transparent
+                        DragStatus.Valid -> Color(0xFF2D243F)
                         DragStatus.Invalid -> Color(0xFF421D1D)
                         DragStatus.None -> Color(0xFF1C1C1E).copy(alpha = 0.6f)
                     }

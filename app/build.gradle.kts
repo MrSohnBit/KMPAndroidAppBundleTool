@@ -9,6 +9,7 @@ plugins {
 
 kotlin {
     jvm("desktop")
+    jvmToolchain(21)
 
     sourceSets {
         val desktopMain by getting {
@@ -37,7 +38,10 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "MainKt"
+        mainClass = "mrsohn.project.aabtools.MainKt"
+        // jpackage가 포함된 JDK 경로를 직접 지정
+        javaHome = "/Users/okpos/.gradle/jdks/eclipse_adoptium-21-aarch64-os_x.2/jdk-21.0.9+10/Contents/Home"
+
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "AABTools"
