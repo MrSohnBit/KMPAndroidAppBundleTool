@@ -8,6 +8,7 @@ moshiKotlinCodegen = "1.15.2"
 kotlinxCoroutinesSwing = "1.10.2"
 jetbrains-compose = "1.10.3"
 bundletool = "1.18.3"
+compose = "1.10.3"
 
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
@@ -15,6 +16,12 @@ kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-co
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshiKotlin" }
 moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshiKotlinCodegen" }
 bundletool = { group = "com.android.tools.build", name = "bundletool", version.ref = "bundletool" }
+
+#compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
+#compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
+#compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose" }
+#compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "compose" }
+#compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
