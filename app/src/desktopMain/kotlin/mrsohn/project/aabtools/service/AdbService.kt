@@ -13,21 +13,55 @@ data class AdbDevice(
 class AdbService {
 
     private fun resolveAdbPath(): Path? {
+        // 1. Try environment variables
         val sdkRoot = listOf(
             System.getenv("ANDROID_SDK_ROOT"),
             System.getenv("ANDROID_HOME")
-        ).firstOrNull { !it.isNullOrBlank() } ?: return null
+        ).firstOrNull { !it.isNullOrBlank() }
 
-        val platformToolsDir = File(sdkRoot, "platform-tools")
-        if (!platformToolsDir.exists() || !platformToolsDir.isDirectory) return null
-
-        val adbName = if (System.getProperty("os.name").lowercase().contains("win")) {
-            "adb.exe"
-        } else {
-            "adb"
+        if (sdkRoot != null) {
+            val adb = findAdbInSdk(sdkRoot)
+            if (adb != null) return adb
         }
 
-        val adbFile = File(platformToolsDir, adbName)
+        // 2. Try common installation paths
+        val home = System.getProperty("user.home")
+        val commonPaths = if (System.getProperty("os.name").lowercase().contains("win")) {
+            val localAppData = System.getenv("LOCALAPPDATA")
+            listOfNotNull(
+                localAppData?.let { "$it\\Android\\Sdk" },
+                "$home\\AppData\\Local\\Android\\Sdk"
+            )
+        } else if (System.getProperty("os.name").lowercase().contains("mac")) {
+            listOf("$home/Library/Android/sdk")
+        } else {
+            listOf("$home/Android/Sdk")
+        }
+
+        for (path in commonPaths) {
+            val adb = findAdbInSdk(path)
+            if (adb != null) return adb
+        }
+
+        // 3. Try to find in PATH using 'which' or 'where'
+        try {
+            val whichCmd = if (System.getProperty("os.name").lowercase().contains("win")) "where" else "which"
+            val process = ProcessBuilder(whichCmd, "adb").start()
+            val output = process.inputStream.bufferedReader().readText().trim()
+            if (process.waitFor() == 0 && output.isNotEmpty()) {
+                val adbFile = File(output.lineSequence().first())
+                if (adbFile.exists() && adbFile.isFile) return adbFile.toPath()
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+
+        return null
+    }
+
+    private fun findAdbInSdk(sdkRoot: String): Path? {
+        val adbName = if (System.getProperty("os.name").lowercase().contains("win")) "adb.exe" else "adb"
+        val adbFile = File(File(sdkRoot, "platform-tools"), adbName)
         return if (adbFile.exists() && adbFile.isFile) adbFile.toPath() else null
     }
 
