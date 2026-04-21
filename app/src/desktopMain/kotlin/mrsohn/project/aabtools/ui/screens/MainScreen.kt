@@ -33,6 +33,7 @@ import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import androidx.compose.material.TextFieldColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Android
@@ -93,12 +94,14 @@ fun MainScreen(viewModel: ConversionViewModel, exitApplication: () -> Unit) {
     var dragStatus by remember { mutableStateOf(DragStatus.None) }
     val scrollState = rememberScrollState()
 
-    // Determine window height based on status
-    val windowHeight = if (status is ConversionStatus.Success) 1020.dp else 760.dp
+    // Determine window size based on status
+    val isSuccess = status is ConversionStatus.Success
+    val windowWidth = if (isSuccess) 1100.dp else 600.dp
+    val windowHeight = if (isSuccess) 800.dp else 760.dp
     val window = LocalWindow.current
-    LaunchedEffect(windowHeight) {
+    LaunchedEffect(isSuccess) {
         window?.let { w ->
-            w.setSize(w.width, windowHeight.value.toInt())
+            w.setSize(windowWidth.value.toInt(), windowHeight.value.toInt())
         }
     }
 
@@ -168,84 +171,89 @@ fun MainScreen(viewModel: ConversionViewModel, exitApplication: () -> Unit) {
                 )
             )
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 40.dp, vertical = 32.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = 40.dp, vertical = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(32.dp)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "AABTools",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp
-                )
-                Text(
-                    text = "Fast & Simple AAB to APK Converter",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.5f)
-                )
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(
-                    1.dp,
-                    when (dragStatus) {
-                        DragStatus.Valid -> Color(0xFFD0BCFF)
-                        DragStatus.Invalid -> Color(0xFFFFB4B4)
-                        DragStatus.None -> Color.White.copy(alpha = 0.05f)
-                    }
-                ),
-                colors = CardDefaults.cardColors(
-                    containerColor = when (dragStatus) {
-                        DragStatus.Valid -> Color(0xFF2D243F)
-                        DragStatus.Invalid -> Color(0xFF421D1D)
-                        DragStatus.None -> Color(0xFF1C1C1E).copy(alpha = 0.6f)
-                    }
-                )
+            // Left Panel (Main Content)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Box(
-                    modifier = Modifier.padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (viewModel.aabPath.isEmpty()) {
-                        SelectionView(viewModel, dragStatus)
-                    } else {
-                        FileInfoView(viewModel, dndTarget)
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "AABTools",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
+                    )
                 }
-            }
 
-            if (viewModel.aabPath.isNotEmpty() && status is ConversionStatus.Idle) {
-                Button(
-                    onClick = { viewModel.convert() },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFD0BCFF),
-                        contentColor = Color(0xFF381E72)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        when (dragStatus) {
+                            DragStatus.Valid -> Color(0xFFD0BCFF)
+                            DragStatus.Invalid -> Color(0xFFFFB4B4)
+                            DragStatus.None -> Color.White.copy(alpha = 0.05f)
+                        }
+                    ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = when (dragStatus) {
+                            DragStatus.Valid -> Color(0xFF2D243F)
+                            DragStatus.Invalid -> Color(0xFF421D1D)
+                            DragStatus.None -> Color(0xFF1C1C1E).copy(alpha = 0.6f)
+                        }
                     )
                 ) {
-                    Icon(Icons.Rounded.Straighten, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Convert to APK", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Box(
+                        modifier = Modifier.padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (viewModel.aabPath.isEmpty()) {
+                            SelectionView(viewModel, dragStatus)
+                        } else {
+                            FileInfoView(viewModel, dndTarget)
+                        }
+                    }
+                }
+
+                if (viewModel.aabPath.isNotEmpty() && status is ConversionStatus.Idle) {
+                    Button(
+                        onClick = { viewModel.convert() },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFD0BCFF),
+                            contentColor = Color(0xFF381E72)
+                        )
+                    ) {
+                        Icon(Icons.Rounded.Straighten, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Convert to APK", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
-            // Success View
-            AnimatedVisibility(
-                visible = status is ConversionStatus.Success,
-                enter = fadeIn() + scaleIn(initialScale = 0.9f)
-            ) {
-                val successStatus = status as? ConversionStatus.Success
-                if (successStatus != null) {
-                    SuccessResultCard(viewModel, successStatus.apkPath)
+            // Right Panel (Success View)
+            if (isSuccess) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    val successStatus = status as? ConversionStatus.Success
+                    if (successStatus != null) {
+                        SuccessResultCard(viewModel, successStatus.apkPath)
+                    }
                 }
             }
         }
@@ -629,38 +637,66 @@ fun SigningOptionsCard(viewModel: ConversionViewModel) {
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
+                androidx.compose.material3.OutlinedTextField(
                     value = viewModel.keystorePath,
                     onValueChange = { viewModel.keystorePath = it },
-                    label = { Text("Keystore Path", fontSize = 12.sp) },
+                    label = { Text("Keystore Path", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
                     modifier = Modifier.fillMaxWidth(),
+                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFD0BCFF),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        focusedLabelColor = Color(0xFFD0BCFF),
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
+                    ),
                     trailingIcon = {
                         IconButton(onClick = {
                             val file = pickFile("Select Keystore", listOf("jks", "keystore"))
                             if (file != null) viewModel.keystorePath = file.absolutePath
-                        }) { Icon(Icons.Rounded.Folder, null, modifier = Modifier.size(20.dp)) }
+                        }) { Icon(Icons.Rounded.Folder, null, modifier = Modifier.size(20.dp), tint = Color(0xFFD0BCFF)) }
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
+                androidx.compose.material3.OutlinedTextField(
                     value = viewModel.keystorePassword,
                     onValueChange = { viewModel.keystorePassword = it },
-                    label = { Text("Keystore Password", fontSize = 12.sp) },
+                    label = { Text("Keystore Password", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
                     modifier = Modifier.fillMaxWidth(),
+                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFD0BCFF),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        focusedLabelColor = Color(0xFFD0BCFF),
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
+                    ),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    androidx.compose.material3.OutlinedTextField(
                         value = viewModel.keyAlias,
                         onValueChange = { viewModel.keyAlias = it },
-                        label = { Text("Key Alias", fontSize = 12.sp) },
-                        modifier = Modifier.weight(1f)
+                        label = { Text("Key Alias", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
+                        modifier = Modifier.weight(1f),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFD0BCFF),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            focusedLabelColor = Color(0xFFD0BCFF),
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
+                        ),
                     )
-                    OutlinedTextField(
+                    androidx.compose.material3.OutlinedTextField(
                         value = viewModel.keyPassword,
                         onValueChange = { viewModel.keyPassword = it },
-                        label = { Text("Key Password", fontSize = 12.sp) },
+                        label = { Text("Key Password", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
                         modifier = Modifier.weight(1f),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFD0BCFF),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            focusedLabelColor = Color(0xFFD0BCFF),
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
+                        ),
                     )
                 }
 

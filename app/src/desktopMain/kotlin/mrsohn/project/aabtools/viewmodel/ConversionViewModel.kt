@@ -1,7 +1,6 @@
 package mrsohn.project.aabtools.viewmodel
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,7 +8,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import mrsohn.project.aabtools.service.*
+import mrsohn.project.aabtools.service.AabConverter
+import mrsohn.project.aabtools.service.AabMetadata
+import mrsohn.project.aabtools.service.AabMetadataExtractor
+import mrsohn.project.aabtools.service.AdbDevice
+import mrsohn.project.aabtools.service.AdbService
+import mrsohn.project.aabtools.service.ConversionStatus
+import mrsohn.project.aabtools.service.KeystoreProfile
+import mrsohn.project.aabtools.service.KeystoreStorage
 import java.awt.Desktop
 import java.io.File
 
@@ -28,6 +34,16 @@ class ConversionViewModel(
     init {
         loadKeystoreProfiles()
         loadRecentConfig()
+        startDevicePolling()
+    }
+
+    private fun startDevicePolling() {
+        viewModelScope.launch {
+            while (true) {
+                refreshDevices()
+                kotlinx.coroutines.delay(5000)
+            }
+        }
     }
 
     private fun loadKeystoreProfiles() {
@@ -175,9 +191,11 @@ class ConversionViewModel(
 
     fun refreshDevices() {
         viewModelScope.launch {
-            connectedDevices = adbService.getConnectedDevices()
+            val freshDevices = adbService.getConnectedDevices()
+            connectedDevices = freshDevices
+            
             // Cleanup selected devices that are no longer connected
-            val currentSerials = connectedDevices.map { it.serial }.toSet()
+            val currentSerials = freshDevices.map { it.serial }.toSet()
             val toRemove = selectedDeviceSerials.keys.filter { it !in currentSerials }
             toRemove.forEach { selectedDeviceSerials.remove(it) }
         }
@@ -236,7 +254,7 @@ class ConversionViewModel(
             val os = System.getProperty("os.name").lowercase()
             when {
                 os.contains("win") -> {
-                    Runtime.getRuntime().exec("explorer.exe /select,\"${file.absolutePath}\"")
+                    Runtime.getRuntime().exec(arrayOf("explorer.exe",  "/select,\"${file.absolutePath}\""))
                 }
                 os.contains("mac") -> {
                     Runtime.getRuntime().exec(arrayOf("open", "-R", file.absolutePath))
