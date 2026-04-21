@@ -25,9 +25,33 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.Android
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Numbers
+import androidx.compose.material.icons.rounded.PhonelinkOff
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.Straighten
+import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +61,13 @@ import androidx.compose.ui.draganddrop.DragAndDropEvent
 import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,7 +88,7 @@ enum class DragStatus { None, Valid, Invalid }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun MainScreen(viewModel: ConversionViewModel) {
+fun MainScreen(viewModel: ConversionViewModel, exitApplication: () -> Unit) {
     val status by viewModel.status.collectAsState()
     var dragStatus by remember { mutableStateOf(DragStatus.None) }
     val scrollState = rememberScrollState()
@@ -68,6 +99,18 @@ fun MainScreen(viewModel: ConversionViewModel) {
     LaunchedEffect(windowHeight) {
         window?.let { w ->
             w.setSize(w.width, windowHeight.value.toInt())
+        }
+    }
+
+    fun handleShortcut(event: androidx.compose.ui.input.key.KeyEvent): Boolean {
+        if (event.type != KeyEventType.KeyDown) return false
+
+        return when {
+            event.key == Key.W && (event.isMetaPressed || event.isCtrlPressed) -> {
+                exitApplication()
+                true
+            }
+            else -> false
         }
     }
 
@@ -113,6 +156,7 @@ fun MainScreen(viewModel: ConversionViewModel) {
 
     Box(
         modifier = Modifier
+            .onPreviewKeyEvent { handleShortcut(it) }
             .fillMaxSize()
             .dragAndDropTarget(
                 shouldStartDragAndDrop = { true },
@@ -517,7 +561,7 @@ fun InfoItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Strin
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun SigningOptionsCard(viewModel: ConversionViewModel) {
     var expanded by remember { mutableStateOf(false) }

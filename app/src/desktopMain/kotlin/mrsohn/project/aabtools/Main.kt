@@ -2,9 +2,6 @@ package mrsohn.project.aabtools
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -12,6 +9,7 @@ import mrsohn.project.aabtools.settings.WindowSettings
 import mrsohn.project.aabtools.ui.screens.MainScreen
 import mrsohn.project.aabtools.ui.theme.AABToolsTheme
 import mrsohn.project.aabtools.viewmodel.ConversionViewModel
+import org.jetbrains.compose.resources.painterResource
 import java.io.File
 import java.awt.Window as AwtWindow
 
@@ -19,7 +17,7 @@ val LocalWindow = staticCompositionLocalOf<AwtWindow?> { null }
 
 fun main() = application {
     val viewModel = ConversionViewModel()
-    val icon = painterResource("icon.png")
+    val icon = painterResource(Res.drawable.icon)
 
     val settingsFile = File("window_settings.properties")
     val settings = WindowSettings(settingsFile)
@@ -49,7 +47,7 @@ fun main() = application {
     ) {
         AABToolsTheme {
             CompositionLocalProvider(LocalWindow provides this.window) {
-                MainScreen(viewModel)
+                MainScreen(viewModel, exitApplication = ::exitApplication)
             }
         }
     }

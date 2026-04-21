@@ -12,22 +12,21 @@ kotlin {
     jvmToolchain(21)
 
     sourceSets {
-        val desktopMain by getting {
+        val commonMain by getting {
             dependencies {
-//                implementation(libs.compose.ui)
-//                implementation(libs.compose.foundation)
-//                implementation(libs.compose.material3)
-//                implementation(libs.compose.material.icons.extended)
-//                implementation(libs.compose.components.resources)
-
-                implementation(compose.desktop.currentOs)
                 implementation(compose.runtime)
                 implementation(compose.foundation)
+                implementation(compose.material)
                 implementation(compose.material3)
+                implementation(compose.materialIconsExtended)
                 implementation(compose.ui)
                 implementation(compose.components.resources)
                 implementation(compose.components.uiToolingPreview)
-                implementation(compose.materialIconsExtended)
+            }
+        }
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
                 implementation(libs.bundletool)
                 implementation(libs.moshi.kotlin)
                 implementation(libs.moshi.kotlin.codegen)
@@ -40,6 +39,12 @@ kotlin {
 
 dependencies {
     add("kspDesktop", libs.moshi.kotlin.codegen)
+}
+
+compose {
+    resources {
+        packageOfResClass = "mrsohn.project.aabtools"
+    }
 }
 
 compose.desktop {
