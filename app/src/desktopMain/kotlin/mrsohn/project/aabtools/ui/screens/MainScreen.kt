@@ -1,7 +1,6 @@
 package mrsohn.project.aabtools.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -33,7 +32,6 @@ import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
-import androidx.compose.material.TextFieldColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
 import androidx.compose.material.icons.rounded.Android
@@ -42,7 +40,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FolderOpen
@@ -74,6 +71,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import mrsohn.project.aabtools.LocalWindow
 import mrsohn.project.aabtools.service.ConversionStatus
 import mrsohn.project.aabtools.viewmodel.ConversionViewModel
@@ -97,12 +95,10 @@ fun MainScreen(viewModel: ConversionViewModel, exitApplication: () -> Unit) {
     // Determine window size based on status
     val isSuccess = status is ConversionStatus.Success
     val windowWidth = if (isSuccess) 1100.dp else 600.dp
-    val windowHeight = if (isSuccess) 800.dp else 760.dp
+    val windowHeight = if (isSuccess) 620.dp else 520.dp
     val window = LocalWindow.current
     LaunchedEffect(isSuccess) {
-        window?.let { w ->
-            w.setSize(windowWidth.value.toInt(), windowHeight.value.toInt())
-        }
+        window?.setSize(windowWidth.value.toInt(), windowHeight.value.toInt())
     }
 
     fun handleShortcut(event: androidx.compose.ui.input.key.KeyEvent): Boolean {
@@ -360,6 +356,8 @@ fun DeviceSelectionCard(viewModel: ConversionViewModel, apkPath: String) {
                 Text("${selectedSerials.count { it.value }} devices selected", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.4f))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val scope = rememberCoroutineScope()
+
                 TextButton(onClick = { viewModel.deselectAllDevices() }) {
                     Text("Deselect All", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
                 }
@@ -368,7 +366,11 @@ fun DeviceSelectionCard(viewModel: ConversionViewModel, apkPath: String) {
                     Text("Select All", fontSize = 12.sp, color = Color(0xFFD0BCFF))
                 }
 
-                IconButton(onClick = { viewModel.refreshDevices() }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { 
+                    scope.launch {
+                        viewModel.refreshDevices() 
+                    }
+                }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Rounded.Refresh, null, tint = Color(0xFFD0BCFF), modifier = Modifier.size(16.dp))
                 }
             }
@@ -513,7 +515,7 @@ fun FileInfoView(viewModel: ConversionViewModel, dndTarget: DragAndDropTarget) {
                     Text("Selected AAB", style = MaterialTheme.typography.labelMedium, color = Color(0xFFD0BCFF))
                     Row(verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .clickable() {
+                            .clickable {
                                 viewModel.openFolder(viewModel.aabPath)
                             }) {
                         Text(
@@ -572,145 +574,177 @@ fun InfoItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Strin
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun SigningOptionsCard(viewModel: ConversionViewModel) {
-    var expanded by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var newProfileName by remember { mutableStateOf("") }
 
     OutlinedCard(
-        modifier = Modifier.fillMaxWidth().animateContentSize(),
+        onClick = { showDialog = true },
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.outlinedCardColors(containerColor = Color.White.copy(alpha = 0.02f)),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.VpnKey, null, tint = Color(0xFFD0BCFF), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    val jksFileName = viewModel.keystorePath.substringAfterLast(File.separator).takeIf { it.isNotEmpty() }
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.VpnKey, null, tint = Color(0xFFD0BCFF), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                val jksFileName = viewModel.keystorePath.substringAfterLast(File.separator).takeIf { it.isNotEmpty() }
+                Column {
                     Text(
-                        text = if (jksFileName != null) "Signing ($jksFileName)" else "Signing",
+                        text = "Signing Configuration",
                         fontWeight = FontWeight.Medium,
                         fontSize = 14.sp,
                         color = Color.White
                     )
+                    if (jksFileName != null) {
+                        Text(
+                            text = jksFileName,
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.4f)
+                        )
+                    }
                 }
-                Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, null, tint = Color.White.copy(alpha = 0.4f))
             }
+            Icon(Icons.Rounded.ExpandMore, null, tint = Color.White.copy(alpha = 0.4f))
+        }
+    }
 
-            if (expanded) {
-                if (viewModel.savedProfiles.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Saved Profiles", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.4f))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        viewModel.savedProfiles.forEach { profile ->
-                            Surface(
-                                onClick = { viewModel.applyProfile(profile) },
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color.White.copy(alpha = 0.05f),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+    if (showDialog) {
+        androidx.compose.ui.window.DialogWindow(
+            onCloseRequest = { showDialog = false },
+            title = "Signing Settings",
+            state = androidx.compose.ui.window.rememberDialogState(width = 500.dp, height = 620.dp)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color(0xFF1C1C1E)
+            ) {
+                Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
+                    Text("Signing Configuration", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (viewModel.savedProfiles.isNotEmpty()) {
+                        Text("Saved Profiles", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.4f))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            viewModel.savedProfiles.forEach { profile ->
+                                Surface(
+                                    onClick = { viewModel.applyProfile(profile) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White.copy(alpha = 0.05f),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
                                 ) {
-                                    Text(profile.name, fontSize = 11.sp, color = Color.White)
-                                    IconButton(
-                                        onClick = { viewModel.deleteProfile(profile) },
-                                        modifier = Modifier.size(16.dp)
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
-                                        Icon(Icons.Rounded.Close, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(10.dp))
+                                        Text(profile.name, fontSize = 11.sp, color = Color.White)
+                                        IconButton(
+                                            onClick = { viewModel.deleteProfile(profile) },
+                                            modifier = Modifier.size(16.dp)
+                                        ) {
+                                            Icon(Icons.Rounded.Close, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(10.dp))
+                                        }
                                     }
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                androidx.compose.material3.OutlinedTextField(
-                    value = viewModel.keystorePath,
-                    onValueChange = { viewModel.keystorePath = it },
-                    label = { Text("Keystore Path", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
-                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFD0BCFF),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                        focusedLabelColor = Color(0xFFD0BCFF),
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
-                    ),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            val file = pickFile("Select Keystore", listOf("jks", "keystore"))
-                            if (file != null) viewModel.keystorePath = file.absolutePath
-                        }) { Icon(Icons.Rounded.Folder, null, modifier = Modifier.size(20.dp), tint = Color(0xFFD0BCFF)) }
-                    }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                androidx.compose.material3.OutlinedTextField(
-                    value = viewModel.keystorePassword,
-                    onValueChange = { viewModel.keystorePassword = it },
-                    label = { Text("Keystore Password", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
-                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFD0BCFF),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                        focusedLabelColor = Color(0xFFD0BCFF),
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
-                    ),
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
+                        value = viewModel.keystorePath,
+                        onValueChange = { viewModel.keystorePath = it },
+                        label = { Text("Keystore Path", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFD0BCFF),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            focusedLabelColor = Color(0xFFD0BCFF),
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
+                        ),
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                val file = pickFile("Select Keystore", listOf("jks", "keystore"))
+                                if (file != null) viewModel.keystorePath = file.absolutePath
+                            }) { Icon(Icons.Rounded.Folder, null, modifier = Modifier.size(20.dp), tint = Color(0xFFD0BCFF)) }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = viewModel.keystorePassword,
+                        onValueChange = { viewModel.keystorePassword = it },
+                        label = { Text("Keystore Password", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFD0BCFF),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            focusedLabelColor = Color(0xFFD0BCFF),
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
+                        ),
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
                         value = viewModel.keyAlias,
                         onValueChange = { viewModel.keyAlias = it },
                         label = { Text("Key Alias", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFD0BCFF),
                             unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
                             focusedLabelColor = Color(0xFFD0BCFF),
                             unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
                         ),
                     )
-                    androidx.compose.material3.OutlinedTextField(
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
                         value = viewModel.keyPassword,
                         onValueChange = { viewModel.keyPassword = it },
                         label = { Text("Key Password", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFD0BCFF),
                             unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
                             focusedLabelColor = Color(0xFFD0BCFF),
                             unfocusedLabelColor = Color.White.copy(alpha = 0.5f)
                         ),
                     )
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { showSaveDialog = true },
-                    modifier = Modifier.fillMaxWidth().height(40.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.05f)),
-                    enabled = viewModel.keystorePath.isNotEmpty() && viewModel.keystorePassword.isNotEmpty()
-                ) {
-                    Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(16.dp), tint = Color(0xFFD0BCFF))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Save as Profile", fontSize = 12.sp, color = Color.White)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = { showSaveDialog = true },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.05f)),
+                            enabled = viewModel.keystorePath.isNotEmpty() && viewModel.keystorePassword.isNotEmpty()
+                        ) {
+                            Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(16.dp), tint = Color(0xFFD0BCFF))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Save as Profile", fontSize = 13.sp, color = Color.White)
+                        }
+                        Button(
+                            onClick = { showDialog = false },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF), contentColor = Color(0xFF381E72))
+                        ) {
+                            Text("Done", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
