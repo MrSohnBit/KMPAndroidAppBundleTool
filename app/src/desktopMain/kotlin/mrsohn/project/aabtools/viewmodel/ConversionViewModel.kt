@@ -213,6 +213,12 @@ class ConversionViewModel(
             return
         }
 
+        val packageName = metadata?.packageName
+        if (packageName.isNullOrBlank()) {
+            installationStatus = "앱 패키지명을 확인할 수 없어 설치 후 자동 실행을 진행할 수 없습니다."
+            return
+        }
+
         viewModelScope.launch {
             installationStatus = "Refreshing devices and starting installation..."
             // Double check connectivity before installing
@@ -229,9 +235,15 @@ class ConversionViewModel(
 
             validTargets.forEach { device ->
                 installationStatus = "Installing to ${device.serial}..."
-                val result = adbService.installApk(device.serial, apkPath)
-                installationStatus = result.fold(
-                    onSuccess = { "Install Success for ${device.model}!" },
+                val installResult = adbService.installApk(device.serial, apkPath)
+                installationStatus = installResult.fold(
+                    onSuccess = {
+                        val launchResult = adbService.launchApp(device.serial, packageName)
+                        launchResult.fold(
+                            onSuccess = { "Install & Launch Success for ${device.model}!" },
+                            onFailure = { "Install Success, but Launch Error for ${device.model}: ${it.message}" }
+                        )
+                    },
                     onFailure = { "Install Error for ${device.model}: ${it.message}" }
                 )
             }

@@ -112,4 +112,35 @@ class AdbService {
             Result.failure(e)
         }
     }
+
+    suspend fun launchApp(deviceSerial: String, packageName: String): Result<String> = withContext(Dispatchers.IO) {
+        val adbPath = resolveAdbPath() ?: return@withContext Result.failure(Exception("ADB not found"))
+        try {
+            val process = ProcessBuilder(
+                adbPath.toString(),
+                "-s",
+                deviceSerial,
+                "shell",
+                "monkey",
+                "-p",
+                packageName,
+                "-c",
+                "android.intent.category.LAUNCHER",
+                "1"
+            )
+                .redirectErrorStream(true)
+                .start()
+
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+
+            if (exitCode == 0 && !output.contains("No activities found", ignoreCase = true)) {
+                Result.success("Successfully launched $packageName on $deviceSerial")
+            } else {
+                Result.failure(Exception("Launch failed: $output"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
