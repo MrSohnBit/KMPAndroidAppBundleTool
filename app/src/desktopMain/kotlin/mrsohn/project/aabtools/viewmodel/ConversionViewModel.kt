@@ -290,4 +290,10 @@ class ConversionViewModel(
         selectedDeviceSerials.clear()
         converter.resetStatus()
     }
+
+    fun resetConversionResult() {
+        installationStatus = null
+        selectedDeviceSerials.clear()
+        converter.resetStatus()
+    }
 }

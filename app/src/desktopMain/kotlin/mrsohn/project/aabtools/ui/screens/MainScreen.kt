@@ -237,6 +237,26 @@ fun MainScreen(viewModel: ConversionViewModel, exitApplication: () -> Unit) {
                         Text("Convert to APK", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
+
+                if (isSuccess) {
+                    TextButton(
+                        onClick = {
+                            viewModel.resetConversionResult()
+                            viewModel.convert()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+//                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.4f))
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFD0BCFF),
+                            contentColor = Color(0xFF381E72)
+                        )
+                    ) {
+                        Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Refresh for Re-convert")
+                    }
+                }
             }
 
             // Right Panel (Success View)
@@ -324,17 +344,6 @@ fun SuccessResultCard(viewModel: ConversionViewModel, apkPath: String) {
             Spacer(Modifier.height(24.dp))
 
             DeviceSelectionCard(viewModel, apkPath)
-
-            Spacer(Modifier.height(24.dp))
-            TextButton(
-                onClick = { viewModel.reset() },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.4f))
-            ) {
-                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Start New Conversion")
-            }
         }
     }
 }
@@ -352,7 +361,7 @@ fun DeviceSelectionCard(viewModel: ConversionViewModel, apkPath: String) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("Install to Devices", style = MaterialTheme.typography.titleSmall, color = Color.White)
+                Text("to devices", style = MaterialTheme.typography.titleSmall, color = Color.White)
                 Text("${selectedSerials.count { it.value }} devices selected", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.4f))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {

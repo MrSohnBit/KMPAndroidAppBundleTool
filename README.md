@@ -41,6 +41,8 @@ AABTools는 Android App Bundle(.aab) 파일을 Android Package(.apk) 파일로 �
 ./gradlew :app:packageDmg  # macOS
 ./gradlew :app:packageMsi  # Windows
 ./gradlew :app:packageDeb  # Linux
+ 생성위치
+ /AABTools/app/build/compose/binaries/main
 ```
 
 
