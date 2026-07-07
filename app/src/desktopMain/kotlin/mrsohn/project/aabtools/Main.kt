@@ -9,7 +9,7 @@ import mrsohn.project.aabtools.settings.WindowSettings
 import mrsohn.project.aabtools.ui.screens.MainScreen
 import mrsohn.project.aabtools.ui.theme.AABToolsTheme
 import mrsohn.project.aabtools.viewmodel.ConversionViewModel
-import org.jetbrains.compose.resources.painterResource
+import androidx.compose.ui.res.painterResource
 import java.io.File
 import java.awt.Window as AwtWindow
 
@@ -17,7 +17,7 @@ val LocalWindow = staticCompositionLocalOf<AwtWindow?> { null }
 
 fun main() = application {
     val viewModel = ConversionViewModel()
-    val icon = painterResource(Res.drawable.icon)
+    val icon = painterResource("img.png")
 
     val settingsFile = File("window_settings.properties")
     val settings = WindowSettings(settingsFile)

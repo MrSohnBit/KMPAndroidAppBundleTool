@@ -57,6 +57,17 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "AABTools"
             packageVersion = "1.0.0"
+
+            val iconsRoot = project.file("src/desktopMain/resources")
+            macOS {
+                iconFile.set(iconsRoot.resolve("icon.icns"))
+            }
+            windows {
+                iconFile.set(iconsRoot.resolve("icon.ico"))
+            }
+            linux {
+                iconFile.set(iconsRoot.resolve("img.png"))
+            }
         }
     }
 }
